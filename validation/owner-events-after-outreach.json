@@ -1,0 +1,19 @@
+{
+  "captured_at": "2026-07-14T21:31:00+08:00",
+  "reason": "Two synthetic public-page file-input E2E runs performed by the owner after the outreach baseline.",
+  "events": {
+    "page_view": 2,
+    "sample_loaded": 0,
+    "file_selected": 2,
+    "scan_succeeded": 2,
+    "scan_failed": 0,
+    "receipt_copied": 0,
+    "feedback_clicked": 0
+  },
+  "evidence": {
+    "fixture": "Synthetic 885 KB single-message JSONL; no private rollout used.",
+    "result": "CRITICAL, 2 records, OVERSIZED_RECORD + ORPHANED_ACTIVE_TURN, no marker or filename in receipt, zero console errors.",
+    "network": "Only page_view, file_selected, and scan_succeeded fixed CounterAPI requests."
+  },
+  "exclusion": "These events are owner verification and must never count as external behavior."
+}
