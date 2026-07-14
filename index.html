@@ -43,13 +43,13 @@
         <div class="drop-icon" aria-hidden="true">↳</div>
         <div>
           <strong>Drop a <code>rollout-*.jsonl</code> here</strong>
-          <p>or select it from your local Codex sessions directory</p>
+          <p>macOS/Linux: <code>~/.codex/sessions/</code> · Windows: <code>%USERPROFILE%\.codex\sessions\</code></p>
         </div>
         <button id="chooseButton" class="primary-button" type="button">Choose file</button>
       </div>
       <progress id="progress" max="1" value="0" hidden></progress>
       <p id="status" class="status" data-tone="idle">Waiting for a local Codex rollout JSONL.</p>
-      <p id="privacy-detail" class="fine-print">Only fixed anonymous funnel counters leave the page: page view, sample, file selected, scan success/failure, copied receipt, and feedback click. No filename, path, prompt, command, model, finding, or report content is sent.</p>
+      <p id="privacy-detail" class="fine-print">Only fixed funnel counter names leave the page: page view, sample, file selected, scan success/failure, copied receipt, and feedback click. CounterAPI receives an ordinary web request and may see network metadata such as IP address and User-Agent. No filename, path, prompt, command, model, finding, report content, or persistent identifier is sent by this page.</p>
     </section>
 
     <section id="result" class="result" hidden aria-labelledby="result-title">
@@ -84,7 +84,7 @@
           <strong>Did this change what you would do next?</strong>
           <p>That is the only validation question. A scan alone is not product proof.</p>
         </div>
-        <a id="feedbackLink" class="primary-button link-button" href="https://github.com/czc6666/codex-thread-health/issues/new?template=validation.yml">Share feedback</a>
+        <a id="feedbackLink" class="primary-button link-button" href="https://github.com/czc6666/codex-thread-health/issues/new?template=validation.yml">Share feedback on GitHub</a>
         <button id="resetButton" class="secondary-button" type="button">Scan another</button>
       </div>
     </section>

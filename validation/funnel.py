@@ -6,6 +6,7 @@ A missing counter is reported as zero. This script never mutates counters.
 
 from __future__ import annotations
 
+import argparse
 import json
 import urllib.error
 import urllib.request
@@ -21,7 +22,13 @@ EVENTS = [
     "receipt_copied",
     "feedback_clicked",
 ]
-BASELINE = Path(__file__).with_name("launch-baseline.json")
+DEFAULT_BASELINE = Path(__file__).with_name("outreach-baseline-33008.json")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Read privacy-minimized funnel counters without mutating them.")
+    parser.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
+    return parser.parse_args()
 
 
 def read_counter(event: str) -> int:
@@ -37,11 +44,15 @@ def read_counter(event: str) -> int:
 
 
 def main() -> int:
-    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))["counters"]
+    args = parse_args()
+    payload = json.loads(args.baseline.read_text(encoding="utf-8"))
+    baseline = payload["counters"]
     current = {event: read_counter(event) for event in EVENTS}
     delta = {event: current[event] - int(baseline.get(event, 0)) for event in EVENTS}
     output = {
         "namespace": NAMESPACE,
+        "baseline_file": str(args.baseline),
+        "baseline_stage": payload.get("stage"),
         "baseline": baseline,
         "current": current,
         "delta_since_owner_verification": delta,

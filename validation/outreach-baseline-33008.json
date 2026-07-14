@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-07-14T21:16:57+08:00",
+  "stage": "after_single_channel_outreach_and_owner_verification",
+  "channel": "openai/codex#33008",
+  "comment_url": "https://github.com/openai/codex/issues/33008#issuecomment-4969574618",
+  "namespace": "codex-thread-health-prod-v1",
+  "deployed_commit": "5001029",
+  "counters": {
+    "page_view": 14,
+    "sample_loaded": 6,
+    "file_selected": 0,
+    "scan_succeeded": 0,
+    "scan_failed": 0,
+    "receipt_copied": 0,
+    "feedback_clicked": 0
+  },
+  "exclusions": "All events up to this point are owner verification, crawler, link preview, or otherwise unattributable. They do not count as external behavior.",
+  "channel_constraint": "Do not post to any second issue or platform during this validation cycle.",
+  "e4_contract": "Require an affected non-owner user's verifiable changed recovery decision, concrete feedback, sanitized receipt, inquiry, or payment. Counter deltas alone are insufficient."
+}

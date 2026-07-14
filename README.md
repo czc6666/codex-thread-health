@@ -37,7 +37,7 @@ Then open `http://127.0.0.1:4174`.
 
 ## Privacy-preserving observability
 
-The public page sends only fixed anonymous counter names:
+The public page sends only fixed counter names and does not attach a persistent identifier or dynamic scan metadata. CounterAPI still receives a normal web request and may see network metadata such as IP address and User-Agent:
 
 ```text
 page_view
@@ -131,7 +131,7 @@ Build only a static, browser-local Thread Health Receipt:
 - no upload;
 - no login/backend;
 - no general Codex dashboard;
-- fixed anonymous funnel events only;
+- fixed, no-persistent-identifier funnel counters only;
 - one feedback issue asking whether the finding changed the user's next action.
 
 Then invite exactly one highly matched affected user after explicit approval to post on a third-party issue.
