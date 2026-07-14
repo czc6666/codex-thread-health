@@ -93,7 +93,7 @@ function render(report) {
   elements.receipt.value = formatReceipt(report);
   elements.receipt.style.height = 'auto';
   elements.receipt.style.height = `${elements.receipt.scrollHeight + 2}px`;
-  setStatus('Scan finished locally. No source text left this browser.', 'success');
+  setStatus('Scan finished locally. No source text was uploaded or included in the receipt.', 'success');
   elements.result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 

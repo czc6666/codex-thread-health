@@ -60,7 +60,7 @@ Given a Codex rollout JSONL, can a local scanner identify the public failure fam
 
 ## Method
 
-- Read-only Python CLI spike first; the public product is a browser-local JavaScript implementation.
+- Browser streaming uses a bounded line buffer and O(1) aggregate state; oversized lines are counted without retaining their bodies.
 - Structural metadata only: record type, byte length, timestamp, and token counters.
 - Public issue-derived fixtures:
   - openai/codex#33008: 885 KB single-message freeze.
@@ -72,7 +72,7 @@ Given a Codex rollout JSONL, can a local scanner identify the public failure fam
 ## Result
 
 ```text
-10 passed
+12 passed
 ```
 
 Public-derived fixtures:

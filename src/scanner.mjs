@@ -46,20 +46,70 @@ function finding(code, severity, evidence, action) {
 
 function createState() {
   return {
-    records: [],
+    recordCount: 0,
     malformedLines: 0,
     maxRecordBytes: 0,
     oversizedCount: 0,
     inlineBinaryCount: 0,
     maxInlineBinaryRecordBytes: 0,
-    tokenPoints: [],
+    maxInputTokens: 0,
+    previousCachedTokens: null,
+    cacheCollapseEvidence: null,
+    lastToolOutputIndex: -1,
+    continuationAfterLastTool: false,
+    latestStartIndex: -1,
+    latestTerminalIndex: -1,
     skippedOversizedRecords: 0,
     maxBufferedChars: 0,
   };
 }
 
+function observeType(state, type) {
+  const index = state.recordCount - 1;
+  if (TOOL_OUTPUT_TYPES.has(type)) {
+    state.lastToolOutputIndex = index;
+    state.continuationAfterLastTool = false;
+  } else if (state.lastToolOutputIndex >= 0 && CONTINUATION_TYPES.has(type)) {
+    state.continuationAfterLastTool = true;
+  }
+  if (type === 'task_started') state.latestStartIndex = index;
+  if (TERMINAL_TYPES.has(type)) state.latestTerminalIndex = index;
+}
+
+function observeTokenUsage(state, usage) {
+  state.maxInputTokens = Math.max(state.maxInputTokens, usage.input);
+  if (
+    !state.cacheCollapseEvidence
+    && state.previousCachedTokens >= 50_000
+    && usage.cached <= state.previousCachedTokens * CACHE_COLLAPSE_RATIO
+  ) {
+    state.cacheCollapseEvidence = {
+      previousCachedTokens: state.previousCachedTokens,
+      currentCachedTokens: usage.cached,
+    };
+  }
+  state.previousCachedTokens = usage.cached;
+}
+
+function recordTypeFromPrefix(prefix) {
+  const payload = prefix.match(/"payload"\s*:\s*\{[\s\S]{0,2048}?"type"\s*:\s*"([^"]+)"/);
+  if (payload) return payload[1];
+  const top = prefix.match(/"type"\s*:\s*"([^"]+)"/);
+  return top ? top[1] : null;
+}
+
+function observeSkippedOversizedRecord(state, byteLength, prefix = '') {
+  state.recordCount += 1;
+  state.skippedOversizedRecords += 1;
+  state.oversizedCount += 1;
+  state.maxRecordBytes = Math.max(state.maxRecordBytes, byteLength);
+  const type = recordTypeFromPrefix(prefix);
+  if (type) observeType(state, type);
+}
+
 function consumeLine(state, line, byteLength) {
   if (!line.trim()) return;
+  state.recordCount += 1;
   state.maxRecordBytes = Math.max(state.maxRecordBytes, byteLength);
   if (byteLength > OVERSIZED_RECORD_BYTES) state.oversizedCount += 1;
 
@@ -75,13 +125,13 @@ function consumeLine(state, line, byteLength) {
     return;
   }
 
-  state.records.push({ type: recordType(record), bytes: byteLength });
+  observeType(state, recordType(record));
   if (containsInlineBinary(record.payload)) {
     state.inlineBinaryCount += 1;
     state.maxInlineBinaryRecordBytes = Math.max(state.maxInlineBinaryRecordBytes, byteLength);
   }
   const usage = extractTokenUsage(record);
-  if (usage) state.tokenPoints.push(usage);
+  if (usage) observeTokenUsage(state, usage);
 }
 
 function finalize(state) {
@@ -100,7 +150,7 @@ function finalize(state) {
       'OVERSIZED_RECORD',
       'critical',
       { count: state.oversizedCount, maxRecordBytes: state.maxRecordBytes },
-      'Avoid reopening the hot thread. Work from a verified copy and replace oversized content with a reference.',
+      'Do not reopen the hot thread. Preserve the original unchanged; if recovery is necessary, work only from a verified copy with a documented procedure.',
     ));
   }
   if (state.inlineBinaryCount) {
@@ -110,28 +160,21 @@ function finalize(state) {
       severity,
       { count: state.inlineBinaryCount, maxRecordBytes: state.maxInlineBinaryRecordBytes },
       severity === 'critical'
-        ? 'Externalize inline binary data in a copied rollout before attempting recovery.'
+        ? 'Preserve the original unchanged. Externalize inline binary data only in a verified copy using a documented recovery procedure.'
         : 'Monitor context growth. Small inline media is present but is not proof of a broken thread.',
     ));
   }
 
-  const types = state.records.map((item) => item.type);
-  const lastToolOutput = types.reduce((latest, type, index) => TOOL_OUTPUT_TYPES.has(type) ? index : latest, -1);
-  if (lastToolOutput >= 0) {
-    const after = types.slice(lastToolOutput + 1);
-    if (!after.some((type) => CONTINUATION_TYPES.has(type))) {
-      findings.push(finding(
-        'POST_TOOL_CONTINUATION_MISSING',
-        'high',
-        { recordsAfterToolOutput: after.length },
-        'Interrupt the stale turn and continue from a bounded handoff instead of repeated polling.',
-      ));
-    }
+  if (state.lastToolOutputIndex >= 0 && !state.continuationAfterLastTool) {
+    findings.push(finding(
+      'POST_TOOL_CONTINUATION_MISSING',
+      'high',
+      { recordsAfterToolOutput: state.recordCount - state.lastToolOutputIndex - 1 },
+      'Interrupt the stale turn and continue from a bounded handoff instead of repeated polling.',
+    ));
   }
 
-  const latestStart = types.reduce((latest, type, index) => type === 'task_started' ? index : latest, -1);
-  const latestTerminal = types.reduce((latest, type, index) => TERMINAL_TYPES.has(type) ? index : latest, -1);
-  if (latestStart > latestTerminal) {
+  if (state.latestStartIndex > state.latestTerminalIndex) {
     findings.push(finding(
       'ORPHANED_ACTIVE_TURN',
       'high',
@@ -140,7 +183,7 @@ function finalize(state) {
     ));
   }
 
-  const maxInputTokens = state.tokenPoints.reduce((value, point) => Math.max(value, point.input), 0);
+  const maxInputTokens = state.maxInputTokens;
   if (maxInputTokens >= LARGE_CONTEXT_TOKENS) {
     findings.push(finding(
       'LARGE_CONTEXT',
@@ -149,18 +192,13 @@ function finalize(state) {
       'Create a bounded handoff or fork before continuing this long thread.',
     ));
   }
-  for (let index = 1; index < state.tokenPoints.length; index += 1) {
-    const previous = state.tokenPoints[index - 1];
-    const current = state.tokenPoints[index];
-    if (previous.cached >= 50_000 && current.cached <= previous.cached * CACHE_COLLAPSE_RATIO) {
-      findings.push(finding(
-        'CACHE_COLLAPSE',
-        'medium',
-        { previousCachedTokens: previous.cached, currentCachedTokens: current.cached },
-        'This may indicate expensive context reconstruction. Treat it as a signal, not a proven root cause.',
-      ));
-      break;
-    }
+  if (state.cacheCollapseEvidence) {
+    findings.push(finding(
+      'CACHE_COLLAPSE',
+      'medium',
+      state.cacheCollapseEvidence,
+      'This may indicate expensive context reconstruction. Treat it as a signal, not a proven root cause.',
+    ));
   }
 
   const risk = findings.reduce(
@@ -178,7 +216,7 @@ function finalize(state) {
     },
     summary: {
       risk,
-      recordCount: state.records.length,
+      recordCount: state.recordCount,
       malformedLines: state.malformedLines,
       maxRecordBytes: state.maxRecordBytes,
       maxInputTokens,
@@ -204,7 +242,21 @@ export async function scanJsonlFile(file, { onProgress = () => {} } = {}) {
   let pending = '';
   let readBytes = 0;
   let oversizedLineBytes = 0;
+  let oversizedLinePrefix = '';
+  let oversizedLineHasInlineBinary = false;
   let skippingOversizedLine = false;
+
+  function finishOversizedLine() {
+    observeSkippedOversizedRecord(state, oversizedLineBytes, oversizedLinePrefix);
+    if (oversizedLineHasInlineBinary) {
+      state.inlineBinaryCount += 1;
+      state.maxInlineBinaryRecordBytes = Math.max(state.maxInlineBinaryRecordBytes, oversizedLineBytes);
+    }
+    oversizedLineBytes = 0;
+    oversizedLinePrefix = '';
+    oversizedLineHasInlineBinary = false;
+    skippingOversizedLine = false;
+  }
 
   function consumeTextSegment(segment) {
     let cursor = 0;
@@ -215,30 +267,21 @@ export async function scanJsonlFile(file, { onProgress = () => {} } = {}) {
 
       if (skippingOversizedLine) {
         oversizedLineBytes += pieceBytes;
-        if (newline >= 0) {
-          state.skippedOversizedRecords += 1;
-          state.oversizedCount += 1;
-          state.maxRecordBytes = Math.max(state.maxRecordBytes, oversizedLineBytes);
-          skippingOversizedLine = false;
-          oversizedLineBytes = 0;
+        if (!oversizedLineHasInlineBinary && oversizedLinePrefix.length < 4096) {
+          oversizedLinePrefix += piece.slice(0, 4096 - oversizedLinePrefix.length);
+          oversizedLineHasInlineBinary = oversizedLinePrefix.startsWith('data:image/') || oversizedLinePrefix.includes('base64,');
         }
+        if (newline >= 0) finishOversizedLine();
       } else {
         const pendingBytes = new TextEncoder().encode(pending).byteLength;
         const projectedBytes = pendingBytes + pieceBytes;
         if (projectedBytes > OVERSIZED_RECORD_BYTES) {
-          const prefix = (pending + piece.slice(0, Math.max(0, 4096 - pending.length))).slice(0, 4096);
-          const inlineBinary = prefix.startsWith('data:image/') || prefix.includes('base64,');
+          oversizedLinePrefix = (pending + piece.slice(0, Math.max(0, 4096 - pending.length))).slice(0, 4096);
+          oversizedLineHasInlineBinary = oversizedLinePrefix.startsWith('data:image/') || oversizedLinePrefix.includes('base64,');
           oversizedLineBytes = projectedBytes;
           pending = '';
-          if (inlineBinary) {
-            state.inlineBinaryCount += 1;
-            state.maxInlineBinaryRecordBytes = Math.max(state.maxInlineBinaryRecordBytes, projectedBytes);
-          }
           if (newline >= 0) {
-            state.skippedOversizedRecords += 1;
-            state.oversizedCount += 1;
-            state.maxRecordBytes = Math.max(state.maxRecordBytes, oversizedLineBytes);
-            oversizedLineBytes = 0;
+            finishOversizedLine();
           } else {
             skippingOversizedLine = true;
           }
@@ -265,9 +308,7 @@ export async function scanJsonlFile(file, { onProgress = () => {} } = {}) {
   }
   consumeTextSegment(decoder.decode());
   if (skippingOversizedLine) {
-    state.skippedOversizedRecords += 1;
-    state.oversizedCount += 1;
-    state.maxRecordBytes = Math.max(state.maxRecordBytes, oversizedLineBytes);
+    finishOversizedLine();
   } else if (pending) {
     consumeLine(state, pending, new TextEncoder().encode(pending).byteLength);
   }

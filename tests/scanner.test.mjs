@@ -104,9 +104,67 @@ test('streaming scan caps buffered content for a multi-megabyte single record', 
   const report = await scanJsonlFile(file);
 
   assert.ok(codes(report).has('OVERSIZED_RECORD'));
+  assert.equal(report.summary.recordCount, 1);
   assert.equal(report.summary.skippedOversizedRecords, 1);
   assert.equal(report.summary.maxBufferedChars <= 500_000, true);
   assert.equal(report.summary.malformedLines, 0);
+});
+
+test('streaming scan detects an oversized inline image across chunks', async () => {
+  const encoder = new TextEncoder();
+  const line = JSON.stringify({
+    type: 'response_item',
+    payload: { type: 'function_call_output', output: `data:image/png;base64,${'A'.repeat(900_000)}` },
+  }) + '\n';
+  const bytes = encoder.encode(line);
+  const chunks = [bytes.slice(0, 300_000), bytes.slice(300_000, 600_000), bytes.slice(600_000)];
+  const file = {
+    size: bytes.byteLength,
+    stream() {
+      return new ReadableStream({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      });
+    },
+  };
+
+  const report = await scanJsonlFile(file);
+
+  assert.equal(report.summary.recordCount, 1);
+  assert.ok(codes(report).has('OVERSIZED_RECORD'));
+  assert.ok(codes(report).has('INLINE_BINARY_PAYLOAD'));
+  assert.ok(codes(report).has('POST_TOOL_CONTINUATION_MISSING'));
+  assert.equal(report.summary.risk, 'critical');
+});
+
+test('streaming scan keeps counting records after an oversized line', async () => {
+  const encoder = new TextEncoder();
+  const huge = JSON.stringify({ type: 'response_item', payload: { type: 'message', content: 'X'.repeat(700_000) } });
+  const completed = jsonl([
+    { type: 'event_msg', payload: { type: 'task_started' } },
+    { type: 'event_msg', payload: { type: 'task_complete' } },
+  ]);
+  const bytes = encoder.encode(`${huge}\n${completed}`);
+  const chunks = [bytes.slice(0, 350_000), bytes.slice(350_000, 700_100), bytes.slice(700_100)];
+  const file = {
+    size: bytes.byteLength,
+    stream() {
+      return new ReadableStream({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(chunk);
+          controller.close();
+        },
+      });
+    },
+  };
+
+  const report = await scanJsonlFile(file);
+
+  assert.equal(report.summary.recordCount, 3);
+  assert.equal(report.summary.skippedOversizedRecords, 1);
+  assert.equal(codes(report).has('ORPHANED_ACTIVE_TURN'), false);
 });
 
 test('malformed JSONL is reported without aborting scan', () => {
