@@ -148,10 +148,19 @@ elements.sample.addEventListener('click', async () => {
 
 elements.copy.addEventListener('click', async () => {
   if (!currentReport) return;
-  await navigator.clipboard.writeText(formatReceipt(currentReport));
-  elements.copy.textContent = 'Copied';
-  setTimeout(() => { elements.copy.textContent = 'Copy receipt'; }, 1400);
-  void telemetry.track('receipt_copied');
+  const receipt = formatReceipt(currentReport);
+  try {
+    await navigator.clipboard.writeText(receipt);
+    elements.copy.textContent = 'Copied';
+    setStatus('Sanitized receipt copied.', 'success');
+    void telemetry.track('receipt_copied');
+  } catch {
+    elements.receipt.focus();
+    elements.receipt.select();
+    elements.copy.textContent = 'Select text manually';
+    setStatus('Clipboard access was blocked. The sanitized receipt is selected for manual copy.', 'error');
+  }
+  setTimeout(() => { elements.copy.textContent = 'Copy receipt'; }, 2000);
 });
 
 elements.feedback.addEventListener('click', () => { void telemetry.track('feedback_clicked'); });

@@ -22,4 +22,6 @@ test('telemetry URL contains only namespace and event name', async () => {
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /thread-health-test\/file_selected\/up$/);
   assert.equal(calls[0].url.includes('filename'), false);
+  assert.equal(calls[0].options.credentials, 'omit');
+  assert.equal(calls[0].options.referrerPolicy, 'no-referrer');
 });

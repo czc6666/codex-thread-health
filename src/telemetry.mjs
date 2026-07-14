@@ -22,7 +22,12 @@ export function createTelemetry({
     if (!fetchImpl) return event;
     const url = `https://api.counterapi.dev/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/up`;
     try {
-      await fetchImpl(url, { mode: 'cors', cache: 'no-store' });
+      await fetchImpl(url, {
+        mode: 'cors',
+        cache: 'no-store',
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+      });
     } catch {
       // Anonymous telemetry must never block local analysis.
     }
