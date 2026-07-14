@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-07-14T20:32:19+08:00",
+  "stage": "final_before_public_launch",
+  "namespace": "codex-thread-health-prod-v1",
+  "counters": {
+    "page_view": 7,
+    "sample_loaded": 5,
+    "file_selected": 0,
+    "scan_succeeded": 0,
+    "scan_failed": 0,
+    "receipt_copied": 0,
+    "feedback_clicked": 0
+  },
+  "exclusions": "All current events are owner/browser verification traffic. They must never count as external validation.",
+  "completion_contract": "At least one affected non-owner user must scan a real local rollout and produce a verifiable changed recovery decision, concrete feedback, sanitized receipt, inquiry, or payment."
+}

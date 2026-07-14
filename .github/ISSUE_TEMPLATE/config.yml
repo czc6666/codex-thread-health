@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: OpenAI Codex issue tracker
+    url: https://github.com/openai/codex/issues
+    about: Report Codex product bugs to the official upstream tracker.

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.counterapi.dev; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action https://github.com">
+  <meta name="description" content="A browser-local structural health receipt for Codex rollout JSONL files.">
+  <title>Codex Thread Health</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Codex Thread Health home">
+      <span class="brand-mark" aria-hidden="true">TH</span>
+      <span>Codex Thread Health</span>
+    </a>
+    <div class="privacy-state"><span></span> Local-only scan</div>
+    <a class="source-link" href="https://github.com/czc6666/codex-thread-health">View source</a>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <p class="eyebrow">READ-ONLY THREAD INSPECTOR</p>
+      <h1 id="page-title">Check the thread<br>before you reopen it.</h1>
+      <p class="lede">Scan a Codex rollout JSONL for oversized records, inline binary payloads, broken turn boundaries, and context pressure. The file is processed inside your browser.</p>
+      <div class="boundary-row" aria-label="Privacy boundary">
+        <span>NO UPLOAD</span><span>NO REPAIR</span><span>NO PROMPT CONTENT IN RECEIPT</span>
+      </div>
+    </section>
+
+    <section class="workspace" aria-labelledby="scan-title">
+      <div class="workspace-head">
+        <div>
+          <p class="step">01 / SELECT</p>
+          <h2 id="scan-title">Choose one rollout JSONL</h2>
+        </div>
+        <button id="sampleButton" class="text-button" type="button">Run damaged sample</button>
+      </div>
+
+      <div id="dropZone" class="drop-zone" aria-describedby="privacy-detail">
+        <input id="fileInput" type="file" accept=".jsonl,application/json,text/plain" hidden>
+        <div class="drop-icon" aria-hidden="true">↳</div>
+        <div>
+          <strong>Drop a <code>rollout-*.jsonl</code> here</strong>
+          <p>or select it from your local Codex sessions directory</p>
+        </div>
+        <button id="chooseButton" class="primary-button" type="button">Choose file</button>
+      </div>
+      <progress id="progress" max="1" value="0" hidden></progress>
+      <p id="status" class="status" data-tone="idle">Waiting for a local Codex rollout JSONL.</p>
+      <p id="privacy-detail" class="fine-print">Only fixed anonymous funnel counters leave the page: page view, sample, file selected, scan success/failure, copied receipt, and feedback click. No filename, path, prompt, command, model, finding, or report content is sent.</p>
+    </section>
+
+    <section id="result" class="result" hidden aria-labelledby="result-title">
+      <div class="result-head">
+        <div>
+          <p class="step">02 / INSPECT</p>
+          <h2 id="result-title">Thread health receipt</h2>
+        </div>
+        <div id="risk" class="risk-badge" data-risk="low">LOW</div>
+      </div>
+
+      <div id="metrics" class="metrics" aria-label="Structural metrics"></div>
+
+      <div class="findings-section">
+        <div class="section-label">Matched signals</div>
+        <ul id="findings" class="findings"></ul>
+      </div>
+
+      <div class="receipt-section">
+        <div class="receipt-head">
+          <div>
+            <p class="step">03 / SHARE SAFELY</p>
+            <h2>Sanitized receipt</h2>
+          </div>
+          <button id="copyButton" class="secondary-button" type="button">Copy receipt</button>
+        </div>
+        <textarea id="receipt" readonly aria-label="Sanitized thread health receipt"></textarea>
+      </div>
+
+      <div class="decision-bar">
+        <div>
+          <strong>Did this change what you would do next?</strong>
+          <p>That is the only validation question. A scan alone is not product proof.</p>
+        </div>
+        <a id="feedbackLink" class="primary-button link-button" href="https://github.com/czc6666/codex-thread-health/issues/new?template=validation.yml">Share feedback</a>
+        <button id="resetButton" class="secondary-button" type="button">Scan another</button>
+      </div>
+    </section>
+
+    <section class="limits" aria-labelledby="limits-title">
+      <p class="step">BOUNDARIES</p>
+      <h2 id="limits-title">What this receipt does not claim</h2>
+      <div class="limit-list">
+        <p><span>01</span> It does not diagnose OpenAI backend latency or prove a root cause.</p>
+        <p><span>02</span> It does not modify, truncate, restore, or reindex your Codex state.</p>
+        <p><span>03</span> Thresholds are evidence-derived heuristics, not official Codex guarantees.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Unofficial, open source, browser-local.</span>
+    <span>Built from public failure reports. Not affiliated with OpenAI.</span>
+  </footer>
+
+  <script type="module" src="./src/app.mjs"></script>
+</body>
+</html>

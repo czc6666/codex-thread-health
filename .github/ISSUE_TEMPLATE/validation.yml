@@ -1,0 +1,40 @@
+name: Validation feedback
+description: Tell us whether the receipt changed your next recovery action
+title: "[Validation] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not paste prompts, source code, commands, filenames, paths, credentials, or raw rollout content. The sanitized receipt is designed to be safe to share, but review it before posting.
+  - type: dropdown
+    id: affected
+    attributes:
+      label: Were you dealing with a real stuck, frozen, missing, or oversized Codex thread?
+      options:
+        - "Yes"
+        - "No — I only tested the sample"
+    validations:
+      required: true
+  - type: dropdown
+    id: changed-action
+    attributes:
+      label: Did the receipt change what you would do next?
+      options:
+        - "Yes — I avoided reopening/resuming the same thread"
+        - "Yes — I decided to create a bounded handoff or fork"
+        - "Yes — I found a concrete structural issue to investigate"
+        - "No — it confirmed what I already knew"
+        - "No — it was not useful or was misleading"
+    validations:
+      required: true
+  - type: textarea
+    id: receipt
+    attributes:
+      label: Optional sanitized receipt
+      description: Paste only the generated receipt. Remove anything you do not want public.
+      render: text
+  - type: textarea
+    id: missing
+    attributes:
+      label: What was missing or misleading?
+      description: Describe the decision you still could not make. Do not include private thread content.
