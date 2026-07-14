@@ -1,10 +1,11 @@
 {
-  "captured_at": "2026-07-14T20:32:19+08:00",
-  "stage": "final_before_public_launch",
+  "captured_at": "2026-07-14T20:47:00+08:00",
+  "stage": "final_after_public_fix_verification",
   "namespace": "codex-thread-health-prod-v1",
+  "deployed_commit": "ded61fa1b3ac6c475873c1eaa74ca3bbc4be3580",
   "counters": {
-    "page_view": 7,
-    "sample_loaded": 5,
+    "page_view": 9,
+    "sample_loaded": 6,
     "file_selected": 0,
     "scan_succeeded": 0,
     "scan_failed": 0,
